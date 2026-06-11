@@ -14,28 +14,34 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+async def clear_webhook(app: Application):
+    await app.bot.delete_webhook(drop_pending_updates=True)
+    logger.info("🧹 Старый webhook/polling сброшен")
+
+
 def main():
     PORT = int(os.getenv("PORT", 8080))
     RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL")
     IS_RENDER = os.getenv("RENDER") == "1"
 
-    app = build_application()
+    logger.info(f"RENDER={os.getenv('RENDER', '—')} | "
+                f"RENDER_EXTERNAL_URL={RENDER_EXTERNAL_URL or '—'} | "
+                f"PORT={PORT}")
+
+    app = build_application(post_init=clear_webhook)
 
     if IS_RENDER:
         if not RENDER_EXTERNAL_URL:
-            service_name = os.getenv("RENDER_SERVICE_NAME", "")
-            if service_name:
-                RENDER_EXTERNAL_URL = f"https://{service_name}.onrender.com"
-            else:
-                logger.warning(
-                    "⚠️ RENDER_EXTERNAL_URL не найден. "
-                    "Добавь его вручную в Render Dashboard → Environment Variables:\n"
-                    "  RENDER_EXTERNAL_URL = https://<твой-сервис>.onrender.com"
-                )
-                RENDER_EXTERNAL_URL = f"http://0.0.0.0:{PORT}"
+            logger.warning(
+                "⚠️ RENDER_EXTERNAL_URL не задан. "
+                "Добавь в Render Dashboard → Environment → "
+                "RENDER_EXTERNAL_URL = https://<имя>.onrender.com"
+            )
+            RENDER_EXTERNAL_URL = f"http://0.0.0.0:{PORT}"
 
         webhook_url = f"{RENDER_EXTERNAL_URL.strip('/')}/{BOT_TOKEN}"
-        logger.info(f"🌐 Webhook: {webhook_url}")
+        logger.info(f"🌐 Webhook mode: {webhook_url}")
+
         app.run_webhook(
             listen="0.0.0.0",
             port=PORT,

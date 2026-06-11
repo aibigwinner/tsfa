@@ -32,8 +32,11 @@ logging.basicConfig(
 )
 
 
-def build_application():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+def build_application(post_init=None):
+    builder = ApplicationBuilder().token(BOT_TOKEN)
+    if post_init:
+        builder.post_init(post_init)
+    app = builder.build()
 
     # Basic commands
     app.add_handler(CommandHandler("start", start))
