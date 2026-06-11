@@ -1,5 +1,6 @@
 import json
 import random
+import threading
 from datetime import datetime
 from pathlib import Path
 from config import ADMIN_IDS
@@ -10,16 +11,19 @@ DATA_DIR = Path(__file__).parent / "data"
 class JSONStorage:
     def __init__(self, filename):
         self.path = DATA_DIR / filename
+        self._lock = threading.Lock()
         if not self.path.exists():
             self._write({})
 
     def _read(self):
-        with open(self.path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with self._lock:
+            with open(self.path, "r", encoding="utf-8") as f:
+                return json.load(f)
 
     def _write(self, data):
-        with open(self.path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        with self._lock:
+            with open(self.path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
 
     def get(self, key, default=None):
         return self._read().get(key, default)

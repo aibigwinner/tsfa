@@ -90,6 +90,17 @@ async def tournament_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await notify_tournament_start(context, result)
 
+    t = tournaments.get(tid)
+    try:
+        await update.message.reply_text(
+            f"🏆 **Турнир начался!**\n\n"
+            f"**{t['name']}** — {len(t['players'])} участников\n"
+            f"Сетка готова, бои пошли!",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+    except Exception:
+        pass
+
     text = format_bracket(result, result["current_round"])
     await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
 

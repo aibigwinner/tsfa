@@ -5,8 +5,10 @@ from telegram.ext import (
     MessageHandler, filters,
 )
 from telegram.constants import ParseMode
+import traceback
 
 from config import BOT_TOKEN
+from storage import players
 from handlers.start import start, help_command
 from handlers.profile import profile, leaderboard, leaderboard_callback, profile_achievements_callback
 from handlers.battle import (
@@ -95,7 +97,27 @@ def build_application(post_init=None):
     # Text handler (game ID, custom character name, etc.)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, battle_handle_text))
 
+    app.add_error_handler(error_handler)
+
     return app
+
+
+async def error_handler(update: Update, context):
+    logging.error(f"Exception: {context.error}")
+    traceback.print_exception(type(context.error), context.error, context.error.__traceback__)
+    try:
+        user = update.effective_user
+        if user:
+            player = players.get(str(user.id))
+            if player and player.get("is_admin"):
+                tb = "".join(traceback.format_exception(type(context.error), context.error, context.error.__traceback__))
+                await context.bot.send_message(
+                    user.id,
+                    f"❌ **Ошибка:**\n`{str(context.error)[:200]}`",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+    except Exception:
+        pass
 
 
 def main():

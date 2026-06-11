@@ -101,6 +101,17 @@ async def tournament_new(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN,
     )
 
+    try:
+        await update.message.reply_text(
+            f"🏆 **Новый турнир!**\n\n"
+            f"**{t['name']}**\n"
+            f"Макс. участников: {t['max_players']}\n\n"
+            f"Записаться: `/tournament`",
+            parse_mode=ParseMode.MARKDOWN,
+        )
+    except Exception:
+        pass
+
 
 async def ban_player(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
