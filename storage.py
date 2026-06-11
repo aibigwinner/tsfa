@@ -1,81 +1,43 @@
-import json
 import random
-import threading
 from datetime import datetime
-from pathlib import Path
+
 from config import ADMIN_IDS
+from database import SQLiteStorage, migrate_from_json
 
-DATA_DIR = Path(__file__).parent / "data"
+migrate_from_json()
 
-
-class JSONStorage:
-    def __init__(self, filename):
-        self.path = DATA_DIR / filename
-        self._lock = threading.Lock()
-        if not self.path.exists():
-            self._write({})
-
-    def _read(self):
-        with self._lock:
-            with open(self.path, "r", encoding="utf-8") as f:
-                return json.load(f)
-
-    def _write(self, data):
-        with self._lock:
-            with open(self.path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-
-    def get(self, key, default=None):
-        return self._read().get(key, default)
-
-    def set(self, key, value):
-        data = self._read()
-        data[key] = value
-        self._write(data)
-
-    def delete(self, key):
-        data = self._read()
-        data.pop(key, None)
-        self._write(data)
-
-    def all(self):
-        return self._read()
-
-    def filter(self, predicate):
-        return {k: v for k, v in self._read().items() if predicate(k, v)}
-
-
-players = JSONStorage("players.json")
-battles = JSONStorage("battles.json")
-tournaments = JSONStorage("tournaments.json")
-challenges = JSONStorage("challenges.json")
-polls = JSONStorage("polls.json")
+players = SQLiteStorage("players")
+battles = SQLiteStorage("battles")
+tournaments = SQLiteStorage("tournaments")
+challenges = SQLiteStorage("challenges")
+polls = SQLiteStorage("polls")
 
 
 # ---- Players ----
 
 def get_or_create_player(user_id, username=None, first_name=None):
     user_id = str(user_id)
-    data = players._read()
-    if user_id not in data:
-        data[user_id] = {
-            "username": username,
-            "first_name": first_name or "Игрок",
-            "rating": 1000,
-            "wins": 0,
-            "losses": 0,
-            "total_battles": 0,
-            "is_admin": int(user_id) in ADMIN_IDS,
-            "is_banned": False,
-            "registered_at": datetime.now().isoformat(),
-            "achievements": [],
-            "characters": {},
-            "current_streak": 0,
-            "max_streak": 0,
-            "tournament_wins": 0,
-        }
-        players._write(data)
-    return data[user_id]
+    existing = players.get(user_id)
+    if existing is not None:
+        return existing
+    data = {
+        "username": username,
+        "first_name": first_name or "Игрок",
+        "rating": 1000,
+        "wins": 0,
+        "losses": 0,
+        "total_battles": 0,
+        "is_admin": int(user_id) in ADMIN_IDS,
+        "is_banned": False,
+        "registered_at": datetime.now().isoformat(),
+        "achievements": [],
+        "characters": {},
+        "current_streak": 0,
+        "max_streak": 0,
+        "tournament_wins": 0,
+    }
+    players.set(user_id, data)
+    return data
 
 
 def get_player(user_id):
@@ -84,20 +46,20 @@ def get_player(user_id):
 
 def update_player(user_id, **kwargs):
     user_id = str(user_id)
-    data = players._read()
-    if user_id in data:
-        data[user_id].update(kwargs)
-        players._write(data)
+    data = players.get(user_id)
+    if data:
+        data.update(kwargs)
+        players.set(user_id, data)
 
 
 # ---- Characters ----
 
 def add_character_usage(user_id, character, won: bool):
     user_id = str(user_id)
-    data = players._read()
-    if user_id not in data:
+    data = players.get(user_id)
+    if not data:
         return
-    chars = data[user_id].setdefault("characters", {})
+    chars = data.setdefault("characters", {})
     name = character.strip().lower()
     if name not in chars:
         chars[name] = {"name": character.strip(), "wins": 0, "losses": 0, "total": 0}
@@ -106,38 +68,38 @@ def add_character_usage(user_id, character, won: bool):
         chars[name]["wins"] += 1
     else:
         chars[name]["losses"] += 1
-    players._write(data)
+    players.set(user_id, data)
 
 
 # ---- Streaks ----
 
 def update_streak(user_id, won: bool):
     user_id = str(user_id)
-    data = players._read()
-    if user_id not in data:
+    data = players.get(user_id)
+    if not data:
         return
     if won:
-        data[user_id]["current_streak"] = data[user_id].get("current_streak", 0) + 1
-        cs = data[user_id]["current_streak"]
-        if cs > data[user_id].get("max_streak", 0):
-            data[user_id]["max_streak"] = cs
+        data["current_streak"] = data.get("current_streak", 0) + 1
+        cs = data["current_streak"]
+        if cs > data.get("max_streak", 0):
+            data["max_streak"] = cs
     else:
-        data[user_id]["current_streak"] = 0
-    players._write(data)
+        data["current_streak"] = 0
+    players.set(user_id, data)
 
 
 # ---- Achievements ----
 
 def award_achievement(user_id, achievement_id):
     user_id = str(user_id)
-    data = players._read()
-    if user_id not in data:
+    data = players.get(user_id)
+    if not data:
         return False
-    earned = data[user_id].setdefault("achievements", [])
+    earned = data.setdefault("achievements", [])
     if achievement_id not in earned:
         earned.append(achievement_id)
-        data[user_id]["achievements"] = earned
-        players._write(data)
+        data["achievements"] = earned
+        players.set(user_id, data)
         return True
     return False
 

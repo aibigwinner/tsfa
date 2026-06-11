@@ -1,3 +1,5 @@
+import html
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
@@ -9,24 +11,26 @@ from storage import (
 
 from handlers.notifications import notify_tournament_start
 
+h = html.escape
+
 
 async def tournament_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     all_tournaments = tournaments.all()
     if not all_tournaments:
         await update.message.reply_text(
-            "😕 Пока нет турниров. Админ может создать: `/tournament_new`",
-            parse_mode=ParseMode.MARKDOWN,
+            "😕 Пока нет турниров. Админ может создать: <code>/tournament_new</code>",
+            parse_mode=ParseMode.HTML,
         )
         return
 
-    lines = ["**🏆 Турниры:**\n"]
+    lines = ["<b>🏆 Турниры:</b>\n"]
     keyboard = []
     for tid, t in list(all_tournaments.items())[:5]:
         status = t["status"]
         players_count = len(t.get("players", []))
         status_emoji = {"registration": "📝", "ongoing": "⚔️", "completed": "🏆"}.get(status, "❓")
         lines.append(
-            f"{status_emoji} **{t['name']}** — {players_count}/{t['max_players']} "
+            f"{status_emoji} <b>{h(t['name'])}</b> — {players_count}/{t['max_players']} "
             f"| {status}"
         )
         if status == "registration":
@@ -45,11 +49,11 @@ async def tournament_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if keyboard:
         keyboard.append([InlineKeyboardButton("🏆 Создать турнир", callback_data="tournament_new")])
         await update.message.reply_text(
-            "\n".join(lines), parse_mode=ParseMode.MARKDOWN,
+            "\n".join(lines), parse_mode=ParseMode.HTML,
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
     else:
-        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)
 
 
 async def tournament_register(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -62,11 +66,11 @@ async def tournament_register(update: Update, context: ContextTypes.DEFAULT_TYPE
     else:
         t = tournaments.get(tid)
         await query.edit_message_text(
-            f"✅ **Ты зарегистрирован!**\n"
-            f"`{t['name']}`\n"
+            f"✅ <b>Ты зарегистрирован!</b>\n"
+            f"<code>{h(t['name'])}</code>\n"
             f"Игроков: {len(t['players'])}/{t['max_players']}\n\n"
             f"Ожидай начала!",
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.HTML,
         )
 
 
@@ -79,7 +83,10 @@ async def tournament_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     args = context.args
     if not args:
-        await update.message.reply_text("Использование: `/tournament_start <id турнира>`", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(
+            "Использование: <code>/tournament_start &lt;id турнира&gt;</code>",
+            parse_mode=ParseMode.HTML,
+        )
         return
 
     tid = args[0]
@@ -93,16 +100,16 @@ async def tournament_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     t = tournaments.get(tid)
     try:
         await update.message.reply_text(
-            f"🏆 **Турнир начался!**\n\n"
-            f"**{t['name']}** — {len(t['players'])} участников\n"
+            f"🏆 <b>Турнир начался!</b>\n\n"
+            f"<b>{h(t['name'])}</b> — {len(t['players'])} участников\n"
             f"Сетка готова, бои пошли!",
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.HTML,
         )
     except Exception:
         pass
 
     text = format_bracket(result, result["current_round"])
-    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 async def tournament_advance(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -115,10 +122,10 @@ async def tournament_advance(update: Update, context: ContextTypes.DEFAULT_TYPE)
     args = context.args
     if len(args) < 3:
         await update.message.reply_text(
-            "Использование: `/tadvance <id турнира> <номер матча> <id победителя>`\n"
+            "Использование: <code>/tadvance &lt;id турнира&gt; &lt;номер матча&gt; &lt;id победителя&gt;</code>\n"
             "Номер матча начинается с 0.\n"
-            "Пример: `/tadvance tournament_123456789 0 987654321`",
-            parse_mode=ParseMode.MARKDOWN,
+            "Пример: <code>/tadvance tournament_123456789 0 987654321</code>",
+            parse_mode=ParseMode.HTML,
         )
         return
 
@@ -129,8 +136,8 @@ async def tournament_advance(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     text = format_bracket(result, result["current_round"])
-    text = f"**{msg}**\n\n{text}"
-    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+    text = f"<b>{msg}</b>\n\n{text}"
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 async def tournament_view_bracket(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -143,11 +150,11 @@ async def tournament_view_bracket(update: Update, context: ContextTypes.DEFAULT_
         return
 
     text = format_bracket(t, t["current_round"])
-    await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN)
+    await query.edit_message_text(text, parse_mode=ParseMode.HTML)
 
 
 def format_bracket(t, current_round):
-    lines = [f"**🏆 {t['name']}** — {t['status']}\n"]
+    lines = [f"<b>🏆 {h(t['name'])}</b> — {t['status']}\n"]
     players = t.get("players", [])
     lines.append(f"Участники: {len(players)}\n")
 
@@ -157,28 +164,28 @@ def format_bracket(t, current_round):
 
     for round_idx, round_matches in enumerate(bracket, 1):
         round_label = "⚔️" if round_idx == current_round else ("✅" if round_idx < current_round else "⏳")
-        lines.append(f"\n{round_label} **Раунд {round_idx}:**")
+        lines.append(f"\n{round_label} <b>Раунд {round_idx}:</b>")
         for m_idx, match in enumerate(round_matches):
             p1 = p2 = "—"
             w_icon = ""
             if isinstance(match.get("p1"), dict):
-                p1 = match["p1"].get("first_name", "???")
+                p1 = h(match["p1"].get("first_name", "???"))
                 if match.get("bye"):
                     w_icon = " 🆓"
             elif match.get("p1"):
-                p1 = match["p1"]
+                p1 = h(match["p1"])
             if isinstance(match.get("p2"), dict):
-                p2 = match["p2"].get("first_name", "???")
+                p2 = h(match["p2"].get("first_name", "???"))
             elif match.get("p2"):
-                p2 = match["p2"]
+                p2 = h(match["p2"])
             elif match.get("bye"):
                 p2 = "bye"
 
             if match.get("winner"):
                 if isinstance(match["winner"], dict):
-                    wn = match["winner"].get("first_name", "???")
+                    wn = h(match["winner"].get("first_name", "???"))
                 else:
-                    wn = match["winner"]
+                    wn = h(match["winner"])
                 w_icon = f" 🏆 {wn}"
 
             lines.append(f"  {m_idx + 1}. {p1} vs {p2}{w_icon}")
@@ -186,8 +193,8 @@ def format_bracket(t, current_round):
     if t["status"] == "completed":
         last_match = bracket[-1][0] if bracket else {}
         if last_match.get("winner"):
-            wn = last_match["winner"].get("first_name", "???") if isinstance(last_match["winner"], dict) else last_match["winner"]
-            lines.append(f"\n👑 **Чемпион: {wn}**")
+            wn = h(last_match["winner"].get("first_name", "???")) if isinstance(last_match["winner"], dict) else h(last_match["winner"])
+            lines.append(f"\n👑 <b>Чемпион: {wn}</b>")
 
     return "\n".join(lines)
 
@@ -195,11 +202,14 @@ def format_bracket(t, current_round):
 async def tournament_bracket_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tid = " ".join(context.args) if context.args else None
     if not tid:
-        await update.message.reply_text("Использование: `/bracket <id турнира>`", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(
+            "Использование: <code>/bracket &lt;id турнира&gt;</code>",
+            parse_mode=ParseMode.HTML,
+        )
         return
     t = tournaments.get(tid)
     if not t:
         await update.message.reply_text("❌ Турнир не найден.")
         return
     text = format_bracket(t, t["current_round"])
-    await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)

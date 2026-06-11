@@ -1,8 +1,13 @@
+import html
+
 from telegram import Update
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 
 from storage import get_or_create_player, players, create_challenge, create_tournament
+from database import get_db_path
+
+h = html.escape
 
 
 async def announce(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -15,13 +20,14 @@ async def announce(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = " ".join(context.args)
     if not text:
         await update.message.reply_text(
-            "Использование: `/announce <текст>`", parse_mode=ParseMode.MARKDOWN
+            'Использование: <code>/announce &lt;текст&gt;</code>',
+            parse_mode=ParseMode.HTML,
         )
         return
 
     await update.message.reply_text(
-        f"📢 **Объявление от администрации:**\n\n{text}",
-        parse_mode=ParseMode.MARKDOWN,
+        f"📢 <b>Объявление от администрации:</b>\n\n{h(text)}",
+        parse_mode=ParseMode.HTML,
     )
     try:
         await update.message.delete()
@@ -39,9 +45,9 @@ async def challenge_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     if len(args) < 2:
         await update.message.reply_text(
-            "Использование: `/challenge <название> | <описание> | <цель>`\n\n"
-            "Пример: `/challenge 10 побед Рэйденом | Одержи 10 побед за Рэйдена | 10`",
-            parse_mode=ParseMode.MARKDOWN,
+            "Использование: <code>/challenge &lt;название&gt; | &lt;описание&gt; | &lt;цель&gt;</code>\n\n"
+            "Пример: <code>/challenge 10 побед Рэйденом | Одержи 10 побед за Рэйдена | 10</code>",
+            parse_mode=ParseMode.HTML,
         )
         return
 
@@ -53,13 +59,13 @@ async def challenge_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     challenge = create_challenge(title, description, user.id, target)
     await update.message.reply_text(
-        f"🔥 **Новый челлендж!**\n\n"
-        f"**{challenge['title']}**\n"
-        f"{challenge['description']}\n\n"
+        f"🔥 <b>Новый челлендж!</b>\n\n"
+        f"<b>{h(challenge['title'])}</b>\n"
+        f"{h(challenge['description'])}\n\n"
         f"Цель: {challenge['target_count']} очков\n"
         f"Статус: Активен\n\n"
         f"Участвуйте и побеждайте! ⚔️",
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.HTML,
     )
 
 
@@ -73,10 +79,10 @@ async def tournament_new(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     if len(args) < 2:
         await update.message.reply_text(
-            "Использование: `/tournament_new <название> [макс. игроков]`\n\n"
-            "Пример: `/tournament_new Кубок Сезона 8`\n"
-            "Пример: `/tournament_new Мини-турнир 4` — на 4 игроков",
-            parse_mode=ParseMode.MARKDOWN,
+            "Использование: <code>/tournament_new &lt;название&gt; [макс. игроков]</code>\n\n"
+            "Пример: <code>/tournament_new Кубок Сезона 8</code>\n"
+            "Пример: <code>/tournament_new Мини-турнир 4</code> — на 4 игроков",
+            parse_mode=ParseMode.HTML,
         )
         return
 
@@ -92,22 +98,22 @@ async def tournament_new(update: Update, context: ContextTypes.DEFAULT_TYPE):
     t = create_tournament(name, user.id, max_players)
 
     await update.message.reply_text(
-        f"✅ **Турнир создан!**\n\n"
-        f"Название: {t['name']}\n"
+        f"✅ <b>Турнир создан!</b>\n\n"
+        f"Название: {h(t['name'])}\n"
         f"Макс. игроков: {t['max_players']}\n"
-        f"ID: `{t['id']}`\n\n"
-        f"Начать можно: `/tournament_start {t['id']}`\n"
-        f"Провести раунд: `/tadvance {t['id']} <номер матча> <id победителя>`",
-        parse_mode=ParseMode.MARKDOWN,
+        f"ID: <code>{t['id']}</code>\n\n"
+        f"Начать можно: <code>/tournament_start {t['id']}</code>\n"
+        f"Провести раунд: <code>/tadvance {t['id']} &lt;номер матча&gt; &lt;id победителя&gt;</code>",
+        parse_mode=ParseMode.HTML,
     )
 
     try:
         await update.message.reply_text(
-            f"🏆 **Новый турнир!**\n\n"
-            f"**{t['name']}**\n"
+            f"🏆 <b>Новый турнир!</b>\n\n"
+            f"<b>{h(t['name'])}</b>\n"
             f"Макс. участников: {t['max_players']}\n\n"
-            f"Записаться: `/tournament`",
-            parse_mode=ParseMode.MARKDOWN,
+            f"Записаться: <code>/tournament</code>",
+            parse_mode=ParseMode.HTML,
         )
     except Exception:
         pass
@@ -121,7 +127,10 @@ async def ban_player(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not context.args:
-        await update.message.reply_text("Укажи ID: `/ban <id>`", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(
+            "Укажи ID: <code>/ban &lt;id&gt;</code>",
+            parse_mode=ParseMode.HTML,
+        )
         return
 
     target_id = context.args[0]
@@ -132,7 +141,9 @@ async def ban_player(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     target["is_banned"] = True
     players.set(target_id, target)
-    await update.message.reply_text(f"✅ Игрок {target.get('first_name', target_id)} забанен.")
+    await update.message.reply_text(
+        f"✅ Игрок {h(target.get('first_name', target_id))} забанен.",
+    )
 
 
 async def unban_player(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -143,7 +154,10 @@ async def unban_player(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not context.args:
-        await update.message.reply_text("Укажи ID: `/unban <id>`", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(
+            "Укажи ID: <code>/unban &lt;id&gt;</code>",
+            parse_mode=ParseMode.HTML,
+        )
         return
 
     target_id = context.args[0]
@@ -154,4 +168,61 @@ async def unban_player(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     target["is_banned"] = False
     players.set(target_id, target)
-    await update.message.reply_text(f"✅ Игрок {target.get('first_name', target_id)} разбанен.")
+    await update.message.reply_text(
+        f"✅ Игрок {h(target.get('first_name', target_id))} разбанен.",
+    )
+
+
+async def backup(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    player = get_or_create_player(user.id, user.username, user.first_name)
+    if not player.get("is_admin"):
+        await update.message.reply_text("❌ Нет прав.")
+        return
+
+    db_path = get_db_path()
+    if not db_path.exists():
+        await update.message.reply_text("❌ База данных не найдена.")
+        return
+
+    await update.message.reply_document(
+        document=open(str(db_path), "rb"),
+        filename="tsfa_backup.db",
+        caption="✅ Резервная копия базы данных.",
+    )
+
+
+async def restore(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    player = get_or_create_player(user.id, user.username, user.first_name)
+    if not player.get("is_admin"):
+        await update.message.reply_text("❌ Нет прав.")
+        return
+
+    context.user_data["awaiting_restore"] = True
+    await update.message.reply_text(
+        "📤 Отправь <code>.db</code> файл резервной копии.",
+        parse_mode=ParseMode.HTML,
+    )
+
+
+async def restore_document(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.user_data.get("awaiting_restore"):
+        return
+
+    user = update.effective_user
+    player = get_or_create_player(user.id, user.username, user.first_name)
+    if not player.get("is_admin"):
+        return
+
+    doc = update.message.document
+    if not doc.file_name or not doc.file_name.endswith(".db"):
+        await update.message.reply_text("❌ Ожидался файл с расширением <code>.db</code>.", parse_mode=ParseMode.HTML)
+        context.user_data.pop("awaiting_restore", None)
+        return
+
+    file = await doc.get_file()
+    db_path = get_db_path()
+    await file.download_to_drive(custom_path=str(db_path))
+    context.user_data.pop("awaiting_restore", None)
+    await update.message.reply_text("✅ База данных восстановлена из резервной копии.")

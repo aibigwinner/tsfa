@@ -1,3 +1,5 @@
+import html
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
@@ -12,6 +14,8 @@ from handlers.notifications import (
     notify_battle_created, notify_battle_joined, notify_achievement,
 )
 from handlers.characters import POPULAR_CHARACTERS
+
+h = html.escape
 
 
 async def battle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -39,21 +43,19 @@ async def battle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("✅ Завершить бой", callback_data="battle_complete")],
         [InlineKeyboardButton("❌ Отменить бой", callback_data="battle_cancel")],
     ])
-    text = f"**🎮 Управление боями:**{status_line}\n\nВыбери действие:"
+    text = f"<b>🎮 Управление боями:</b>{status_line}\n\nВыбери действие:"
 
     if update.callback_query:
         q = update.callback_query
-        # Если кнопку нажал не тот, кто вызвал меню — не даём взаимодействовать
         owner = context.user_data.get("menu_owner")
         if owner and owner != q.from_user.id:
             await q.answer("⛔ Это меню вызвано другим игроком.", show_alert=True)
             return
         await q.answer()
-        await q.edit_message_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+        await q.edit_message_text(text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
     else:
-        # Запоминаем, кто вызвал меню
         context.user_data["menu_owner"] = user.id
-        await update.message.reply_text(text, parse_mode=ParseMode.MARKDOWN, reply_markup=keyboard)
+        await update.message.reply_text(text, parse_mode=ParseMode.HTML, reply_markup=keyboard)
 
 
 async def battle_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -65,7 +67,6 @@ async def battle_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer("⛔ Это меню вызвано другим игроком.", show_alert=True)
         return
 
-    # Сбрасываем старый флоу, начинаем новый
     for k in list(context.user_data.keys()):
         if k.startswith("battle_") or k in ("battle_step", "character"):
             del context.user_data[k]
@@ -74,9 +75,9 @@ async def battle_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["owner_id"] = query.from_user.id
 
     await query.edit_message_text(
-        "Введи **Game ID** из игры:\n"
+        "Введи <b>Game ID</b> из игры:\n"
         "Отправь ID в ответном сообщении.",
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode=ParseMode.HTML,
     )
 
 
@@ -84,7 +85,6 @@ async def battle_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user = update.effective_user
     step = context.user_data.get("battle_step")
 
-    # Игнорируем текст, если у юзера нет активного шага
     if not step:
         return
 
@@ -103,8 +103,8 @@ async def battle_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     elif step == "awaiting_screenshot_battle_id":
         await update.message.reply_text(
-            "❌ Отправь **изображение** (скриншот), а не текст.",
-            parse_mode=ParseMode.MARKDOWN,
+            "❌ Отправь <b>изображение</b> (скриншот), а не текст.",
+            parse_mode=ParseMode.HTML,
         )
 
     elif step == "awaiting_character_name":
@@ -119,13 +119,13 @@ async def battle_handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE)
             set_battle_character(battle_id, user.id, char)
         context.user_data.pop("battle_step", None)
         context.user_data.pop("opp_char_battle_id", None)
-        await update.message.reply_text(f"✅ Персонаж: **{char}**. Удачного боя! ⚔️",
-                                        parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(f"✅ Персонаж: <b>{h(char)}</b>. Удачного боя! ⚔️",
+                                        parse_mode=ParseMode.HTML)
 
     else:
         await update.message.reply_text(
-            "Используй `/battle` для управления боями.",
-            parse_mode=ParseMode.MARKDOWN,
+            "Используй <code>/battle</code> для управления боями.",
+            parse_mode=ParseMode.HTML,
         )
 
 
@@ -135,27 +135,26 @@ async def _finish_battle_creation(update, context, character=None):
     user = update.effective_user
 
     if not game_id:
-        await update.message.reply_text("❌ Game ID не найден. Начни заново: `/battle`",
-                                        parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text("❌ Game ID не найден. Начни заново: <code>/battle</code>",
+                                        parse_mode=ParseMode.HTML)
         return
 
     get_or_create_player(user.id, user.username, user.first_name)
     battle = create_battle(game_id, user.id, battle_type, character)
 
-    # Чистим user_data
     for k in list(context.user_data.keys()):
         if k.startswith("battle_") or k in ("character", "owner_id"):
             del context.user_data[k]
 
     await update.message.reply_text(
-        f"✅ **Бой создан!**\n"
-        f"Game ID: `{game_id}`\n"
+        f"✅ <b>Бой создан!</b>\n"
+        f"Game ID: <code>{h(game_id)}</code>\n"
         f"Тип: {'Дружеский' if battle_type == 'friendly' else 'Рейтинговый'}\n"
-        f"{'Персонаж: ' + character if character else ''}\n"
-        f"ID боя: `{battle['id']}`\n\n"
+        f"{'Персонаж: ' + h(character) if character else ''}\n"
+        f"ID боя: <code>{battle['id']}</code>\n\n"
         f"Поделись Game ID с соперником!\n"
-        f"После боя заверши его через `/battle`.",
-        parse_mode=ParseMode.MARKDOWN,
+        f"После боя заверши его через <code>/battle</code>.",
+        parse_mode=ParseMode.HTML,
     )
 
     try:
@@ -169,7 +168,6 @@ async def battle_type_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query = update.callback_query
     await query.answer()
 
-    # Проверяем, что у этого юзера есть активное создание боя
     if context.user_data.get("battle_step") != "awaiting_type":
         await query.answer("⛔ Сначала создай бой через меню.", show_alert=True)
         return
@@ -191,8 +189,8 @@ async def battle_type_chosen(update: Update, context: ContextTypes.DEFAULT_TYPE)
     rows.append([InlineKeyboardButton("⏭ Пропустить", callback_data="char_skip")])
 
     await query.edit_message_text(
-        "**Выбери персонажа (или пропусти):**",
-        parse_mode=ParseMode.MARKDOWN,
+        "<b>Выбери персонажа (или пропусти):</b>",
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(rows),
     )
 
@@ -221,10 +219,10 @@ async def battle_choose_character(update: Update, context: ContextTypes.DEFAULT_
             if k.startswith("battle_") or k in ("character", "owner_id"):
                 del context.user_data[k]
         await query.edit_message_text(
-            f"✅ **Бой создан!**\nGame ID: `{game_id}`\n"
+            f"✅ <b>Бой создан!</b>\nGame ID: <code>{h(game_id)}</code>\n"
             f"Тип: {'Дружеский' if battle_type == 'friendly' else 'Рейтинговый'}\n"
-            f"ID боя: `{battle['id']}`\n\nПоделись Game ID!",
-            parse_mode=ParseMode.MARKDOWN,
+            f"ID боя: <code>{battle['id']}</code>\n\nПоделись Game ID!",
+            parse_mode=ParseMode.HTML,
         )
         try:
             chat_id = query.message.chat_id if query.message else None
@@ -243,10 +241,10 @@ async def battle_choose_character(update: Update, context: ContextTypes.DEFAULT_
             if k.startswith("battle_") or k in ("character", "owner_id"):
                 del context.user_data[k]
         await query.edit_message_text(
-            f"✅ **Бой создан!**\nGame ID: `{game_id}`\n"
+            f"✅ <b>Бой создан!</b>\nGame ID: <code>{h(game_id)}</code>\n"
             f"Тип: {'Дружеский' if battle_type == 'friendly' else 'Рейтинговый'}\n"
-            f"Персонаж: {data}\nID боя: `{battle['id']}`\n\nПоделись Game ID!",
-            parse_mode=ParseMode.MARKDOWN,
+            f"Персонаж: {h(data)}\nID боя: <code>{battle['id']}</code>\n\nПоделись Game ID!",
+            parse_mode=ParseMode.HTML,
         )
         try:
             chat_id = query.message.chat_id if query.message else None
@@ -285,8 +283,8 @@ async def battle_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard.append([InlineKeyboardButton("◀ Назад", callback_data="battle_back")])
     await query.edit_message_text(
-        "**🔍 Доступные бои (чужие):**",
-        parse_mode=ParseMode.MARKDOWN,
+        "<b>🔍 Доступные бои (чужие):</b>",
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -315,12 +313,12 @@ async def battle_join(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["join_battle_id"] = battle_id
 
     await query.edit_message_text(
-        f"✅ **Ты присоединился к бою!**\n\n"
-        f"Game ID: `{battle['game_id']}`\n"
-        f"Создатель: {creator.get('first_name', 'Игрок')}\n"
+        f"✅ <b>Ты присоединился к бою!</b>\n\n"
+        f"Game ID: <code>{h(battle['game_id'])}</code>\n"
+        f"Создатель: {h(creator.get('first_name', 'Игрок'))}\n"
         f"Тип: {battle['type']}\n\n"
-        f"**Укажи своего персонажа:**",
-        parse_mode=ParseMode.MARKDOWN,
+        f"<b>Укажи своего персонажа:</b>",
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(rows),
     )
 
@@ -351,8 +349,8 @@ async def battle_opponent_character(update: Update, context: ContextTypes.DEFAUL
     else:
         set_battle_character(battle_id, query.from_user.id, char_data)
         await query.edit_message_text(
-            f"✅ Персонаж: **{char_data}**. Удачного боя! ⚔️",
-            parse_mode=ParseMode.MARKDOWN,
+            f"✅ Персонаж: <b>{h(char_data)}</b>. Удачного боя! ⚔️",
+            parse_mode=ParseMode.HTML,
         )
 
 
@@ -384,8 +382,8 @@ async def battle_screenshot_start(update: Update, context: ContextTypes.DEFAULT_
         for bid, b in active.items()
     ]
     await query.edit_message_text(
-        "**📸 Выбери бой для скриншота:**",
-        parse_mode=ParseMode.MARKDOWN,
+        "<b>📸 Выбери бой для скриншота:</b>",
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -398,8 +396,8 @@ async def battle_screenshot_choose(update: Update, context: ContextTypes.DEFAULT
     context.user_data["screenshot_battle_id"] = battle_id
     context.user_data["owner_id"] = query.from_user.id
     await query.edit_message_text(
-        "📸 Отправь **фото** (скриншот результата боя):",
-        parse_mode=ParseMode.MARKDOWN,
+        "📸 Отправь <b>фото</b> (скриншот результата боя):",
+        parse_mode=ParseMode.HTML,
     )
 
 
@@ -454,8 +452,8 @@ async def battle_complete(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton(label, callback_data=f"cw_{bid}")])
 
     await query.edit_message_text(
-        "**✅ Выбери бой для завершения:**",
-        parse_mode=ParseMode.MARKDOWN,
+        "<b>✅ Выбери бой для завершения:</b>",
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -520,15 +518,15 @@ async def battle_finish(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await notify_achievement(context, loser_id, ach)
 
     text = (
-        f"✅ **Бой завершён!**\n"
-        f"Game ID: `{battle['game_id']}`\n"
-        f"Победитель: {winner.get('first_name', 'Игрок')} 🏆\n\n"
+        f"✅ <b>Бой завершён!</b>\n"
+        f"Game ID: <code>{h(battle['game_id'])}</code>\n"
+        f"Победитель: {h(winner.get('first_name', 'Игрок'))} 🏆\n\n"
         f"Рейтинг обновлён!"
     )
     if newly_earned:
-        text += f"\n🎉 Новое достижение: {newly_earned[0]['icon']} {newly_earned[0]['name']}!"
+        text += f"\n🎉 Новое достижение: {newly_earned[0]['icon']} {h(newly_earned[0]['name'])}!"
 
-    await query.edit_message_text(text, parse_mode=ParseMode.MARKDOWN)
+    await query.edit_message_text(text, parse_mode=ParseMode.HTML)
 
 
 async def battle_cancel_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -557,8 +555,8 @@ async def battle_cancel_list(update: Update, context: ContextTypes.DEFAULT_TYPE)
         keyboard.append([InlineKeyboardButton(label, callback_data=f"cancel_{bid}")])
 
     await query.edit_message_text(
-        "**❌ Выбери бой для отмены:**",
-        parse_mode=ParseMode.MARKDOWN,
+        "<b>❌ Выбери бой для отмены:</b>",
+        parse_mode=ParseMode.HTML,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -571,7 +569,7 @@ async def battle_cancel_confirm(update: Update, context: ContextTypes.DEFAULT_TY
     if not battle:
         await query.edit_message_text("❌ Бой не найден.")
         return
-    await query.edit_message_text(f"❌ Бой `{battle['game_id']}` отменён.", parse_mode=ParseMode.MARKDOWN)
+    await query.edit_message_text(f"❌ Бой <code>{h(battle['game_id'])}</code> отменён.", parse_mode=ParseMode.HTML)
 
 
 async def battles_list_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -583,16 +581,16 @@ async def battles_list_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_id = str(update.effective_user.id) if update.effective_user else None
-    lines = ["**📋 Все активные бои:**\n"]
+    lines = ["<b>📋 Все активные бои:</b>\n"]
     for b in list(active.values())[:15]:
         creator = get_player(b["creator_id"]) or {}
         opponent = get_player(b.get("opponent_id")) if b.get("opponent_id") else None
-        opp_text = opponent.get("first_name", "???") if opponent else "ожидание"
+        opp_text = h(opponent.get("first_name", "???")) if opponent else "ожидание"
         status = "🟢" if b["status"] == "waiting" else "⚔️"
         mine = " ← Ты" if user_id and (
             b["creator_id"] == user_id or b.get("opponent_id") == user_id
         ) else ""
-        char_info = f" [{b.get('character_creator', '?')}]" if b.get("character_creator") else ""
-        lines.append(f"{status} `{b['game_id']}`{char_info} | {creator.get('first_name', '?')} vs {opp_text}{mine}")
+        char_info = f" [{h(b.get('character_creator', '?'))}]" if b.get("character_creator") else ""
+        lines.append(f"{status} <code>{h(b['game_id'])}</code>{char_info} | {h(creator.get('first_name', '?'))} vs {opp_text}{mine}")
 
-    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.MARKDOWN)
+    await update.message.reply_text("\n".join(lines), parse_mode=ParseMode.HTML)

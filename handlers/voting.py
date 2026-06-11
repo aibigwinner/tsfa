@@ -1,7 +1,11 @@
+import html
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from storage import get_or_create_player, polls, create_poll, vote_in_poll, close_poll, get_poll_results
+
+h = html.escape
 
 
 async def poll_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -17,9 +21,9 @@ async def poll_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if len(parts) < 3:
         await update.message.reply_text(
-            "Использование: `/poll <вопрос> | <вар1> | <вар2> | ...`\n\n"
-            "Пример: `/poll Какой челлендж? | 10 побед Рэйденом | 20 побед Лин | 5 побед любым`",
-            parse_mode="Markdown",
+            "Использование: <code>/poll &lt;вопрос&gt; | &lt;вар1&gt; | &lt;вар2&gt; | ...</code>\n\n"
+            "Пример: <code>/poll Какой челлендж? | 10 побед Рэйденом | 20 побед Лин | 5 побед любым</code>",
+            parse_mode="HTML",
         )
         return
 
@@ -34,10 +38,10 @@ async def poll_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     poll = create_poll(question, options, user.id)
 
-    text_lines = [f"**📊 Голосование:**\n{poll['question']}\n"]
+    text_lines = [f"<b>📊 Голосование:</b>\n{h(poll['question'])}\n"]
     keyboard = []
     for key, label in poll["options"].items():
-        text_lines.append(f"{key}. {label}")
+        text_lines.append(f"{key}. {h(label)}")
         keyboard.append([
             InlineKeyboardButton(
                 f"{key}. {label}", callback_data=f"vote_{poll['id']}_{key}"
@@ -50,7 +54,7 @@ async def poll_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "\n".join(text_lines),
-        parse_mode="Markdown",
+        parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -71,15 +75,15 @@ async def poll_vote(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     total_votes = len(poll["votes"])
-    text_lines = [f"**📊 Голосование:**\n{poll['question']}\n"]
+    text_lines = [f"<b>📊 Голосование:</b>\n{h(poll['question'])}\n"]
     for key, label in poll["options"].items():
         count = sum(1 for v in poll["votes"].values() if v == key)
         bar = "█" * count + "░" * max(0, total_votes - count)
-        text_lines.append(f"{key}. {label}\n   [{bar}] {count} голос(ов)")
+        text_lines.append(f"{key}. {h(label)}\n   [{bar}] {count} голос(ов)")
 
     await query.edit_message_text(
         "\n".join(text_lines),
-        parse_mode="Markdown",
+        parse_mode="HTML",
         reply_markup=query.message.reply_markup,
     )
 
@@ -104,16 +108,16 @@ async def poll_close(update: Update, context: ContextTypes.DEFAULT_TYPE):
     winner = max(results, key=results.get) if results else "—"
 
     text_lines = [
-        f"**📊 Голосование завершено!**\n{poll['question']}\n",
-        f"**🏆 Победитель:** {winner}\n",
-        "**Результаты:**",
+        f"<b>📊 Голосование завершено!</b>\n{h(poll['question'])}\n",
+        f"<b>🏆 Победитель:</b> {winner}\n",
+        "<b>Результаты:</b>",
     ]
     for label, count in results.items():
         bar = "█" * count + "░" * max(0, total - count)
         pct = f"{count * 100 // total}%" if total > 0 else "0%"
-        text_lines.append(f"  {label}: [{bar}] {count} ({pct})")
+        text_lines.append(f"  {h(label)}: [{bar}] {count} ({pct})")
 
     await query.edit_message_text(
         "\n".join(text_lines),
-        parse_mode="Markdown",
+        parse_mode="HTML",
     )

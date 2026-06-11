@@ -1,7 +1,11 @@
+import html
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from storage import get_or_create_player
+
+h = html.escape
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -9,16 +13,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     get_or_create_player(user.id, user.username, user.first_name)
 
     text = (
-        f"👋 Добро пожаловать в **Shadow Fight 4: Arena — Бот для турниров!**\n\n"
-        f"🎮 **Команды:**\n"
-        f"`/help` — всё команды\n"
-        f"`/battle` — создать или найти бой\n"
-        f"`/tournament` — список турниров\n"
-        f"`/profile` — мой профиль\n"
-        f"`/leaderboard` — топ игроков\n\n"
+        f"👋 Добро пожаловать в <b>Shadow Fight 4: Arena — Бот для турниров!</b>\n\n"
+        f"🎮 <b>Команды:</b>\n"
+        f"<code>/help</code> — всё команды\n"
+        f"<code>/battle</code> — создать или найти бой\n"
+        f"<code>/tournament</code> — список турниров\n"
+        f"<code>/profile</code> — мой профиль\n"
+        f"<code>/leaderboard</code> — топ игроков\n\n"
         f"Создавай бои, участвуй в турнирах и становись лучшим! ⚔️"
     )
-    await update.message.reply_text(text, parse_mode="Markdown")
+    await update.message.reply_text(text, parse_mode="HTML")
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -26,27 +30,26 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     player = get_or_create_player(user.id, user.username, user.first_name)
 
     lines = [
-        "**🎮 Доступные команды:**\n",
-        "**Для всех:**",
-        "`/start` — приветствие",
-        "`/help` — это сообщение",
-        "`/profile` — мой профиль и статистика",
-        "`/leaderboard` — рейтинг игроков",
-        "`/battle` — создать или найти бой",
-        "`/battles` — список активных боёв",
-        "`/tournament` — список турниров",
+        "🎮 <b>Доступные команды:</b>\n",
+        "<b>Для всех:</b>",
+        "<code>/start</code> — приветствие",
+        "<code>/help</code> — это сообщение",
+        "<code>/profile</code> — мой профиль и статистика",
+        "<code>/leaderboard</code> — рейтинг игроков",
+        "<code>/battle</code> — создать или найти бой",
+        "<code>/battles</code> — список активных боёв",
+        "<code>/tournament</code> — список турниров",
+        "<code>/achievements</code> — достижения",
+        "<code>/backup</code> — резервная копия (админ)",
         "",
-        "**Для администраторов:**",
-        "`/announce <текст>` — сделать объявление",
-        "`/challenge` — создать челлендж/ивент",
-        "`/tournament_new` — создать новый турнир",
-        "`/ban <user_id>` — забанить игрока",
-        "`/unban <user_id>` — разбанить",
+        "<b>Для администраторов:</b>",
+        "<code>/announce &lt;текст&gt;</code> — сделать объявление",
+        "<code>/challenge</code> — создать челлендж/ивент",
+        "<code>/tournament_new</code> — создать новый турнир",
+        "<code>/ban &lt;user_id&gt;</code> — забанить игрока",
+        "<code>/unban &lt;user_id&gt;</code> — разбанить",
     ]
 
-    if player.get("is_admin"):
-        text = "\n".join(lines)
-    else:
-        text = "\n".join(lines[:-6])
+    text = "\n".join(lines) if player.get("is_admin") else "\n".join(lines[:-7])
 
-    await update.message.reply_text(text, parse_mode="Markdown")
+    await update.message.reply_text(text, parse_mode="HTML")

@@ -1,11 +1,12 @@
 import logging
+import traceback
+
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
     MessageHandler, filters,
 )
 from telegram.constants import ParseMode
-import traceback
 
 from config import BOT_TOKEN
 from storage import players
@@ -24,6 +25,7 @@ from handlers.tournament import (
 )
 from handlers.admin import (
     announce, challenge_create, tournament_new, ban_player, unban_player,
+    backup, restore, restore_document,
 )
 from handlers.voting import poll_create, poll_vote, poll_close
 from handlers.achievements import achievements_list
@@ -62,6 +64,8 @@ def build_application(post_init=None):
     app.add_handler(CommandHandler("ban", ban_player))
     app.add_handler(CommandHandler("unban", unban_player))
     app.add_handler(CommandHandler("poll", poll_create))
+    app.add_handler(CommandHandler("backup", backup))
+    app.add_handler(CommandHandler("restore", restore))
 
     # Battle callbacks
     app.add_handler(CallbackQueryHandler(battle_create, pattern="^battle_create$"))
@@ -94,6 +98,9 @@ def build_application(post_init=None):
     # Photos (screenshots)
     app.add_handler(MessageHandler(filters.PHOTO, battle_screenshot_photo))
 
+    # Documents (restore backup)
+    app.add_handler(MessageHandler(filters.Document.ALL, restore_document))
+
     # Text handler (game ID, custom character name, etc.)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, battle_handle_text))
 
@@ -110,11 +117,10 @@ async def error_handler(update: Update, context):
         if user:
             player = players.get(str(user.id))
             if player and player.get("is_admin"):
-                tb = "".join(traceback.format_exception(type(context.error), context.error, context.error.__traceback__))
                 await context.bot.send_message(
                     user.id,
-                    f"❌ **Ошибка:**\n`{str(context.error)[:200]}`",
-                    parse_mode=ParseMode.MARKDOWN,
+                    f"❌ <b>Ошибка:</b>\n<code>{str(context.error)[:200]}</code>",
+                    parse_mode=ParseMode.HTML,
                 )
     except Exception:
         pass

@@ -1,7 +1,11 @@
+import html
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from storage import get_or_create_player, get_player, players
+
+h = html.escape
 
 POPULAR_CHARACTERS = [
     "Рэйден", "Лин", "Тень", "Джун", "Император", "Кибо",
@@ -26,8 +30,8 @@ async def choose_character(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rows.append([InlineKeyboardButton("◀ Назад", callback_data="char_skip")])
 
     await query.edit_message_text(
-        "**Выбери своего персонажа:**\n(или нажми «Пропустить»)",
-        parse_mode="Markdown",
+        "<b>Выбери своего персонажа:</b>\n(или нажми «Пропустить»)",
+        parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup(rows),
     )
 
@@ -41,7 +45,7 @@ async def character_selected(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await query.edit_message_text("✅ Персонаж не указан.")
         return
     context.user_data["character"] = char
-    await query.edit_message_text(f"✅ Персонаж: **{char}**", parse_mode="Markdown")
+    await query.edit_message_text(f"✅ Персонаж: <b>{h(char)}</b>", parse_mode="HTML")
 
 
 async def character_stats_text(user_id):
@@ -52,12 +56,12 @@ async def character_stats_text(user_id):
     if not chars:
         return ""
 
-    lines = ["\n**🎯 Статистика по персонажам:**"]
+    lines = ["\n<b>🎯 Статистика по персонажам:</b>"]
     sorted_chars = sorted(
         chars.values(), key=lambda c: c.get("total", 0), reverse=True
     )[:10]
     for c in sorted_chars:
-        name = c.get("name", "???")
+        name = h(c.get("name", "???"))
         w = c.get("wins", 0)
         l = c.get("losses", 0)
         t = c.get("total", 0)

@@ -1,7 +1,11 @@
+import html
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from storage import get_or_create_player, award_achievement, get_player
+
+h = html.escape
 
 ACHIEVEMENTS = [
     {
@@ -86,9 +90,9 @@ async def achievements_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     player = get_or_create_player(user.id, user.username, user.first_name)
     earned = set(player.get("achievements", []))
 
-    lines = ["**🎖️ Достижения:**\n"]
+    lines = ["<b>🎖️ Достижения:</b>\n"]
     for ach in ACHIEVEMENTS:
         mark = "✅" if ach["id"] in earned else "⬜"
-        lines.append(f"{mark} {ach['icon']} **{ach['name']}** — {ach['desc']}")
+        lines.append(f"{mark} {ach['icon']} <b>{h(ach['name'])}</b> — {h(ach['desc'])}")
 
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    await update.message.reply_text("\n".join(lines), parse_mode="HTML")
