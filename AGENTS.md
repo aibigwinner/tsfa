@@ -45,7 +45,7 @@ Telegram bot for Shadow Fight 4: Arena tournaments.
 
 ## Cron setup
 Render free web services sleep after 15 minutes idle. Use cron-job.org (free):
-- URL: `https://shadow-fight-arena-bot.onrender.com/`
+- URL: `https://shadow-fight-arena-bot.onrender.com/health`
 - Interval: every 10 minutes
 - Any HTTP request (even 404) counts as activity
 
