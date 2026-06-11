@@ -29,7 +29,7 @@ _original_init = WebhookAppClass.__init__
 
 def _patched_init(self, webhook_path, bot, update_queue, secret_token=None):
     _original_init(self, webhook_path, bot, update_queue, secret_token)
-    self.handlers.insert(0, (r"/health/?", HealthHandler))
+    self.add_handlers(r".*", [(r"/health/?", HealthHandler)])
 
 
 WebhookAppClass.__init__ = _patched_init
