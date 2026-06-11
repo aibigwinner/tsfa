@@ -1,15 +1,14 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta
 
 from telegram.ext import ContextTypes
 
-from storage import battles, tournaments, get_player
+from storage import get_player
 
 logger = logging.getLogger(__name__)
 
 
-async def notify_battle_created(context: ContextTypes.DEFAULT_TYPE, battle):
+async def notify_battle_created(context: ContextTypes.DEFAULT_TYPE, battle, chat_id: int = None):
     creator = get_player(battle["creator_id"]) or {}
     text = (
         f"🎮 **Новый бой создан!**\n"
@@ -18,7 +17,8 @@ async def notify_battle_created(context: ContextTypes.DEFAULT_TYPE, battle):
         f"Статус: ожидание соперника\n\n"
         f"`/battles` — посмотреть активные бои"
     )
-    chat_id = context._chat_id if hasattr(context, '_chat_id') else None
+    if chat_id is None and hasattr(context, '_chat_id'):
+        chat_id = getattr(context, '_chat_id', None)
     if chat_id:
         try:
             await context.bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
@@ -35,7 +35,7 @@ async def notify_battle_joined(context: ContextTypes.DEFAULT_TYPE, battle, joine
             chat_id=int(creator_id),
             text=(
                 f"⚔️ **К твоему бою присоединились!**\n"
-                f"Game ID: `{battle['game_id']}`\n"
+                f"`{battle['game_id']}`\n"
                 f"Соперник: {joiner.get('first_name', 'Игрок')}\n\n"
                 f"Удачного боя!"
             ),
@@ -49,7 +49,7 @@ async def notify_battle_joined(context: ContextTypes.DEFAULT_TYPE, battle, joine
             chat_id=int(joiner_id),
             text=(
                 f"✅ **Ты присоединился к бою!**\n"
-                f"Game ID: `{battle['game_id']}`\n"
+                f"`{battle['game_id']}`\n"
                 f"Создатель: {get_player(creator_id).get('first_name', 'Игрок')}\n\n"
                 f"После боя заверши его через `/battle`"
             ),
@@ -68,8 +68,7 @@ async def notify_tournament_start(context: ContextTypes.DEFAULT_TYPE, tournament
                 text=(
                     f"🏆 **Турнир начался!**\n"
                     f"`{tournament['name']}`\n\n"
-                    f"Проверь сетку: `/bracket {tournament['id']}`\n"
-                    f"Удачи!"
+                    f"Сетка: `/bracket {tournament['id']}`"
                 ),
                 parse_mode="Markdown",
             )
