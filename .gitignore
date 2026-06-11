@@ -1,0 +1,11 @@
+# Runtime data
+data/*.json
+!data/.gitkeep
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
