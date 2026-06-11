@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-from storage import get_or_create_player, players
+from storage import get_or_create_player, get_player, players
 
 POPULAR_CHARACTERS = [
     "Рэйден", "Лин", "Тень", "Джун", "Император", "Кибо",
