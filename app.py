@@ -15,20 +15,25 @@ logging.basicConfig(
 def main():
     PORT = int(os.getenv("PORT", 8080))
     RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL")
+    IS_RENDER = os.getenv("RENDER") == "1"
 
     app = build_application()
 
-    if RENDER_EXTERNAL_URL:
-        webhook_url = f"{RENDER_EXTERNAL_URL}/{BOT_TOKEN}"
-        logging.info(f"Shadow Fight Arena Bot запущен (webhook): {webhook_url}")
+    if IS_RENDER and RENDER_EXTERNAL_URL:
+        webhook_url = f"{RENDER_EXTERNAL_URL.strip('/')}/{BOT_TOKEN}"
+        logging.info(f"🌐 Webhook mode: {webhook_url}")
         app.run_webhook(
             listen="0.0.0.0",
             port=PORT,
             url_path=BOT_TOKEN,
             webhook_url=webhook_url,
         )
+    elif IS_RENDER:
+        logging.warning("⚠️ RENDER_EXTERNAL_URL не найден. Укажи в Variables → RENDER_EXTERNAL_URL")
+        logging.info("🔄 Запуск в polling mode...")
+        app.run_polling(allowed_updates=Update.ALL_TYPES)
     else:
-        logging.info("RENDER_EXTERNAL_URL не задан, переключение в polling")
+        logging.info("🔄 Polling mode (локальный запуск)")
         app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
