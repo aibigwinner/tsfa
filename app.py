@@ -7,7 +7,7 @@ import tornado.web
 import tornado.httpserver
 import tornado.ioloop
 from telegram import Update
-from telegram.ext import Application
+
 from telegram.ext._utils.webhookhandler import TelegramHandler
 
 from main import build_application
@@ -67,7 +67,6 @@ def main():
             await app.initialize()
             await app.bot.delete_webhook(drop_pending_updates=True)
             logger.info("Старый webhook сброшен")
-            await app.post_init(app)
             await app.start()
 
             server = tornado.httpserver.HTTPServer(tornado_app)
