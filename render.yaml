@@ -9,4 +9,6 @@ services:
         sync: false
       - key: ADMIN_IDS
         sync: false
+      - key: RENDER_EXTERNAL_URL
+        value: https://shadow-fight-arena-bot.onrender.com
     plan: free
