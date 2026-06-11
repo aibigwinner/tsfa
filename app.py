@@ -22,7 +22,7 @@ async def clear_webhook(app: Application):
 def main():
     PORT = int(os.getenv("PORT", 8080))
     RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL")
-    IS_RENDER = os.getenv("RENDER") == "1"
+    IS_RENDER = os.getenv("RENDER", "").lower() in ("1", "true", "yes")
 
     logger.info(f"RENDER={os.getenv('RENDER', '—')} | "
                 f"RENDER_EXTERNAL_URL={RENDER_EXTERNAL_URL or '—'} | "
