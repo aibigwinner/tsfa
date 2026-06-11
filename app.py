@@ -11,6 +11,8 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def main():
     PORT = int(os.getenv("PORT", 8080))
@@ -19,21 +21,29 @@ def main():
 
     app = build_application()
 
-    if IS_RENDER and RENDER_EXTERNAL_URL:
+    if IS_RENDER:
+        if not RENDER_EXTERNAL_URL:
+            service_name = os.getenv("RENDER_SERVICE_NAME", "")
+            if service_name:
+                RENDER_EXTERNAL_URL = f"https://{service_name}.onrender.com"
+            else:
+                logger.warning(
+                    "⚠️ RENDER_EXTERNAL_URL не найден. "
+                    "Добавь его вручную в Render Dashboard → Environment Variables:\n"
+                    "  RENDER_EXTERNAL_URL = https://<твой-сервис>.onrender.com"
+                )
+                RENDER_EXTERNAL_URL = f"http://0.0.0.0:{PORT}"
+
         webhook_url = f"{RENDER_EXTERNAL_URL.strip('/')}/{BOT_TOKEN}"
-        logging.info(f"🌐 Webhook mode: {webhook_url}")
+        logger.info(f"🌐 Webhook: {webhook_url}")
         app.run_webhook(
             listen="0.0.0.0",
             port=PORT,
             url_path=BOT_TOKEN,
             webhook_url=webhook_url,
         )
-    elif IS_RENDER:
-        logging.warning("⚠️ RENDER_EXTERNAL_URL не найден. Укажи в Variables → RENDER_EXTERNAL_URL")
-        logging.info("🔄 Запуск в polling mode...")
-        app.run_polling(allowed_updates=Update.ALL_TYPES)
     else:
-        logging.info("🔄 Polling mode (локальный запуск)")
+        logger.info("🔄 Polling mode (локально)")
         app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
